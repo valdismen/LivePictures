@@ -7,7 +7,11 @@
 
 import UIKit
 
-final class GeneratorConfigurationView: UIView {
+protocol Focusable {
+    func focus()
+}
+
+final class GeneratorConfigurationView: UIView, Focusable {
     
     private let backgroundView = OverlayView()
 

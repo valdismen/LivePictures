@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class AnimationSpeedConfigurationView: UIView {
+final class AnimationSpeedConfigurationView: UIView, Focusable {
     
     private let backgroundView = OverlayView()
 

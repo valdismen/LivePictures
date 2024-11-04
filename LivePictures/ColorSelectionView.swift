@@ -141,6 +141,8 @@ private final class ColorSliderView: UIView {
             if position != normalizedPosition {
                 position = normalizedPosition
             }
+            
+            setNeedsLayout()
         }
     }
     

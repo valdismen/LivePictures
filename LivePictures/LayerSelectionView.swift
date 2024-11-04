@@ -17,7 +17,6 @@ final class LayerSelectionView: UIView {
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = 0
         layout.minimumInteritemSpacing = 0
-        layout.itemSize = CGSize(width: 150, height: 200)
         
         let view = UICollectionView(frame: .zero, collectionViewLayout: layout)
         view.dataSource = self
@@ -41,10 +40,6 @@ final class LayerSelectionView: UIView {
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate(makeEdgeConstraints(to: backgroundView))
         
-        NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 200)
-        ])
-        
         addSubview(collectionView)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate(makeEdgeConstraints(to: collectionView, insets: .init(
@@ -61,6 +56,20 @@ final class LayerSelectionView: UIView {
     }
     
     required init?(coder: NSCoder) { nil }
+    
+    func setSize(size: CGSize) {
+
+        let aspectRatio = size.height / size.width
+        let height = aspectRatio * 100
+        
+        (collectionView.collectionViewLayout as? UICollectionViewFlowLayout)?.itemSize = CGSize(
+            width: 100, height: height
+        )
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: height)
+        ])
+    }
     
     func scroll() {
         collectionView.reloadData()

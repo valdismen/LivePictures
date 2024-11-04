@@ -242,7 +242,8 @@ final class ViewController: UIViewController {
         view.icon = UIImage(systemName: "filemenu.and.selection")
         
         view.tapAction = { [weak self] in
-            self?.toggleMenuView()
+            guard let self else { return }
+            togglePopupView(view: menuView)
         }
         
         return view
@@ -322,7 +323,8 @@ final class ViewController: UIViewController {
         view.icon = UIImage(named: "figures")
         
         view.tapAction = { [weak self] in
-            self?.toggleFigureSelectionView()
+            guard let self else { return }
+            togglePopupView(view: figureSelectionContainerView)
         }
         
         return view
@@ -332,7 +334,8 @@ final class ViewController: UIViewController {
         let view = ColorActionView()
         
         view.tapAction = { [weak self] in
-            self?.toggleFastColorSelectionView()
+            guard let self else { return }
+            togglePopupView(view: fastColorSelectionContainerView)
         }
         
         return view
@@ -343,7 +346,8 @@ final class ViewController: UIViewController {
         view.icon = UIImage(named: "palette")
         
         view.tapAction = { [weak self] in
-            self?.toggleColorSelectionView()
+            guard let self else { return }
+            togglePopupView(view: colorSelectionView)
         }
         
         return view
@@ -360,8 +364,10 @@ final class ViewController: UIViewController {
             view.color = $0
 
             view.tapAction = { [weak self, weak view] in
-                self?.toggleFastColorSelectionView()
-                self?.colorActionView.color = view?.color
+                guard let self else { return }
+                togglePopupView(view: fastColorSelectionContainerView)
+                colorActionView.color = view?.color
+                colorSelectionView.color = view?.color ?? .black
             }
 
             return view
@@ -447,6 +453,8 @@ final class ViewController: UIViewController {
             self?.colorActionView.color = color
         }
         
+        view.color = colorActionView.color ?? .black
+        
         return view
     }()
     
@@ -463,8 +471,8 @@ final class ViewController: UIViewController {
         view.title = "Генерация кадров"
         
         view.tapAction = { [weak self] in
-            self?.toggleMenuView()
-            self?.toggleGeneratorConfigurationView()
+            guard let self else { return }
+            togglePopupView(view: generatorConfigurationView)
         }
         
         return view
@@ -552,8 +560,8 @@ final class ViewController: UIViewController {
         view.title = "Скорость воспроизведения"
         
         view.tapAction = { [weak self] in
-            self?.toggleMenuView()
-            self?.toggleAnimationSpeedConfigurationView()
+            guard let self else { return }
+            togglePopupView(view: animationSpeedConfigurationView)
         }
         
         return view
@@ -585,7 +593,7 @@ final class ViewController: UIViewController {
                 self.playbackActionsGroupView.alpha = 0
             }
             
-            toggleExportView()
+            togglePopupView(view: exportView)
             
             exportView.runExport(rate: playingRate, size: canvasView.bounds.size) { [weak self] url in
                 guard let url else { return }
@@ -767,6 +775,8 @@ final class ViewController: UIViewController {
         let pictureModel = PictureModel(size: canvasView.bounds.size)
         picturesBookModel.addPicture(pictureModel)
         showPicture(pictureModel, index: 0)
+        
+        layerSelectionView.setSize(size: canvasView.bounds.size)
     }
     
     private func makeToolActionView(icon: UIImage?, drawingTool: @escaping () -> DrawingTool) -> BasicActionView {
@@ -935,82 +945,55 @@ final class ViewController: UIViewController {
         canvasView.setPictureModel(picture)
     }
     
-    private func toggleMenuView() {
-        openMenuActionView.isActive.toggle()
-        let newAlpha: CGFloat = openMenuActionView.isActive ? 1 : 0
+    private func togglePopupView(view: UIView) {
+        guard let viewData = popupViews[view] else { return }
         
+        var viewsToToggle: [PopupViewData] = []
+        var currentViewData: PopupViewData? = viewData
+        
+        while let viewData = currentViewData {
+            viewsToToggle.append(viewData)
+            currentViewData = viewData.parentView.flatMap { popupViews[$0] }
+        }
+        
+        self.view.endEditing(true)
+
         UIView.animate(withDuration: 0.2) {
-            self.menuView.alpha = newAlpha
-        }
-    }
-    
-    private func toggleFigureSelectionView() {
-        figuresActionView.isActive.toggle()
-        let newAlpha: CGFloat = figuresActionView.isActive ? 1 : 0
-        
-        UIView.animate(withDuration: 0.2) {
-            self.figureSelectionContainerView.alpha = newAlpha
-        }
-    }
-    
-    private func toggleFastColorSelectionView() {
-        if paletteActionView.isActive {
-            toggleColorSelectionView()
-        }
-        
-        colorActionView.isActive.toggle()
-        let newAlpha: CGFloat = colorActionView.isActive ? 1 : 0
-        
-        UIView.animate(withDuration: 0.2) {
-            self.fastColorSelectionContainerView.alpha = newAlpha
-        }
-    }
-    
-    private func toggleColorSelectionView() {
-        paletteActionView.isActive.toggle()
-        let newAlpha: CGFloat = paletteActionView.isActive ? 1 : 0
-        
-        colorSelectionView.color = colorActionView.color ?? .black
-        
-        UIView.animate(withDuration: 0.2) {
-            self.colorSelectionView.alpha = newAlpha
-        }
-    }
-    
-    private func toggleGeneratorConfigurationView() {
-        if generatorConfigurationView.alpha > 0 {
-            view.endEditing(true)
-        } else {
-            generatorConfigurationView.focus()
-        }
-        
-        let newAlpha: CGFloat = generatorConfigurationView.alpha > 0 ? 0 : 1
-        
-        UIView.animate(withDuration: 0.2) {
-            self.generatorConfigurationView.alpha = newAlpha
-        }
-    }
-    
-    private func toggleAnimationSpeedConfigurationView() {
-        if animationSpeedConfigurationView.alpha > 0 {
-            view.endEditing(true)
-        } else {
-            animationSpeedConfigurationView.focus()
-        }
-        
-        let newAlpha: CGFloat = animationSpeedConfigurationView.alpha > 0 ? 0 : 1
-        
-        UIView.animate(withDuration: 0.2) {
-            self.animationSpeedConfigurationView.alpha = newAlpha
+            self.popupViews.values.forEach { viewData in
+                guard !viewsToToggle.contains(where: { $0.view == viewData.view }) else {
+                    return
+                }
+                
+                viewData.actionView?.isActive = false
+                viewData.view.alpha = 0
+            }
+            
+            let isNeededShow = !(viewData.view.alpha > 0)
+            
+            viewsToToggle.forEach { viewData in
+                if let actionView = viewData.actionView {
+                    actionView.isActive = isNeededShow
+                }
+                
+                viewData.view.alpha = isNeededShow ? 1 : 0
+            }
+            
+            if isNeededShow, let view = view as? Focusable {
+                view.focus()
+            }
         }
     }
     
     private func toggleExportView() {
-        let newAlpha: CGFloat = exportView.alpha > 0 ? 0 : 1
-        
-        UIView.animate(withDuration: 0.2) {
-            self.exportView.alpha = newAlpha
-        }
+        togglePopupView(view: exportView)
+    }
+    
+    private func toggleAnimationSpeedConfigurationView() {
+        togglePopupView(view: animationSpeedConfigurationView)
+    }
+    
+    private func toggleGeneratorConfigurationView() {
+        togglePopupView(view: generatorConfigurationView)
     }
     
     private func showLayerSelectionView() {
